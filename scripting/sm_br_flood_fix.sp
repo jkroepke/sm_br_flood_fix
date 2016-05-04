@@ -18,29 +18,48 @@ public Plugin myinfo = {
 }
 
 public void OnPluginStart() {
-	// Plugin version
-	CreateConVar("sm_shf_version", PLUGIN_VERSION, "Version of Server Hibernate Fix", FCVAR_PLUGIN|FCVAR_SPONLY|FCVAR_UNLOGGED|FCVAR_DONTRECORD|FCVAR_REPLICATED|FCVAR_NOTIFY);
+    // Plugin version
+    CreateConVar("sm_shf_version", PLUGIN_VERSION, "Version of Server Hibernate Fix", FCVAR_SPONLY|FCVAR_UNLOGGED|FCVAR_DONTRECORD|FCVAR_REPLICATED|FCVAR_NOTIFY);
 
-	// Enable/disable plugin on the fly
-	g_cvarEnabled = CreateConVar("sm_drop_weapons_enabled", "1", "Enables or disables plugin functionality <1 = Enabled/Default, 0 = Disabled>", 0, true, 0.0, true, 1.0);
-	if (g_cvarEnabled == INVALID_HANDLE) {
-		LogError("Couldn't register 'sm_drop_weapons_enabled'!");
-	}
+    // Enable/disable plugin on the fly
+    g_cvarEnabled = CreateConVar("sm_drop_weapons_enabled", "0", "Enables or disables plugin functionality <1 = Enabled/Default, 0 = Disabled>", 0, true, 0.0, true, 1.0);
+    if (g_cvarEnabled == INVALID_HANDLE) {
+        LogError("Couldn't register 'sm_drop_weapons_enabled'!");
+    }
 
-	// Get real player disconnect event
-	HookEvent("round_poststart", Event_RoundPostStart, EventHookMode_Post);
+    // Get real player disconnect event
+    //HookEvent("round_poststart", Event_RoundPostStart, EventHookMode_Post);
+    HookEvent("player_spawn", Event_PlayerSpawn);
 
-	// Load configuration file
-	AutoExecConfig(true, "dropweapon");
+    // Load configuration file
+    AutoExecConfig(true, "dropweapon");
 }
 
 
-public Action Event_RoundPostStart(Handle event, const char[] name, bool dontBroadcast) {
-    if (g_cvarEnabled.IntValue == 0)
-		return Plugin_Continue;
+public void RemoveAllWeapons(client) {
+    for(new i = 0; i < 4; i++) {
+        new ent = GetPlayerWeaponSlot(client, i);
 
-    LOOP_CLIENTS(client, CLIENTFILTER_INGAME) {
-        Client_RemoveAllWeapons(client);
+        if(ent != -1) {
+            RemovePlayerItem(client, ent);
+            RemoveEdict(ent);
+        }
     }
-	return Plugin_Continue;
+}
+
+public Action Event_PlayerSpawn(Handle event, const char[] name, bool dontBroadcast) {
+    if (g_cvarEnabled.IntValue == 0)
+        return Plugin_Continue;
+
+    for (new i = 1; i <= MaxClients; i++)
+    {
+        if (IsClientInGame(i) && (!IsFakeClient(i)) && IsPlayerAlive(i))
+        {
+            RemoveAllWeapons(i);
+            GivePlayerItem(i, "weapon_glock");
+            GivePlayerItem(i, "weapon_knife");
+        }
+    }
+
+    return Plugin_Continue;
 }
